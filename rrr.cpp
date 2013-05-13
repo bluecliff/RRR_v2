@@ -99,7 +99,7 @@ void rrr::initRS(int n,u64* bitvec)
 		int i=index/D;
 		int j=index%D;
 		int hole=D-j;
-		u64 v;
+		u64 v = 0;
 		if(hole >= u)
 		{
 			v = (bitvec[i] >> j)&((0UL-1) >> (D-u));
@@ -130,7 +130,7 @@ void rrr::initRS(int n,u64* bitvec)
 
 		k++;
 		count += c;
-		offset += S.getsize();
+		offset = S.getsize();
 		if(k%sample==0)
 		{
 			sumR_temp[k/sample]=count;
@@ -180,4 +180,37 @@ bool rrr::write(ofstream& fout)
 	sumR->write(fout);
 	posS->write(fout);
 
+}
+
+u32 rrr::rank(int index)
+{
+	int width=4;
+	u32 i=index/u;
+	u32 j=i/sample;
+	u32 sum=sumR->get(j);
+	u32 pos=posS->get(j);
+	for(u32 beg=j*sample;beg<i;beg++)
+	{
+		int c = R.getbits(width*beg,width);
+		sum += c;
+		pos += blogmap[c];
+	}
+	int c = R.getbits(width*i,width);
+	int o = S.getbits(pos,blogmap[c]);
+
+	//u64 res;
+	if(c==0)
+		return sum;
+	else if(c==15)
+		return sum+index%u+1;
+	else
+	{
+		int t=0;
+		for(int i=0;i<c;i++)
+		{
+			t+=cal(u,i);
+		}
+		u64 temp=E[t+o];
+		return sum+popcount(temp << (D-index%u-1));
+	}
 }

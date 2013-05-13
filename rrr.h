@@ -15,6 +15,7 @@ public:
 	~rrr();
 	void initE();
 	void initRS(int n,u64* bitvec);
+	u32 rank(int index);
 	void makecmap();
 	void makeblogmap();
 	bool write(ofstream& fout);
