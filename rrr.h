@@ -15,9 +15,11 @@ public:
 	~rrr();
 	void initE();
 	void initRS(int n,u64* bitvec);
+	int get(int index);
 	u32 rank(int index);
 	void makecmap();
 	void makeblogmap();
+	void makecalmap();
 	bool write(ofstream& fout);
 
 private:
@@ -32,5 +34,6 @@ private:
 
 	int* cmap;
 	int* blogmap;
+	int* calmap;
 };
 #endif

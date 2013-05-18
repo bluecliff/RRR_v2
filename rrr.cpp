@@ -81,6 +81,16 @@ void rrr::makeblogmap()
 	}
 }
 
+void rrr::makecalmap()
+{
+	calmap=new int[u+1];
+	memset(calmap,0,sizeof(int)*(u+1));
+	for(int i=1;i<=u;i++)
+	{
+		calmap[i]=cal(u,i-1)+calmap[i-1];
+	}
+}
+
 void rrr::initRS(int n,u64* bitvec)
 {
 	int width=4;
@@ -137,8 +147,8 @@ void rrr::initRS(int n,u64* bitvec)
 			posS_temp[k/sample]=offset;
 		}
 	}
-	sumR = new compactIntArray(sumR_temp,(n/u+1)/sample,count);
-	posS = new compactIntArray(posS_temp,(n/u+1)/sample,offset);
+	sumR = new compactIntArray(sumR_temp,(n/u+1)/sample+1,count);
+	posS = new compactIntArray(posS_temp,(n/u+1)/sample+1,offset);
 }
 rrr::rrr()
 {
@@ -148,6 +158,7 @@ rrr::rrr()
 	posS=NULL;
 	cmap=NULL;
 	blogmap=NULL;
+	calmap=NULL;
 }
 
 rrr::rrr(int n, u64* bitvec)
@@ -156,6 +167,7 @@ rrr::rrr(int n, u64* bitvec)
 	this->sample=150;
 	this->makecmap();
 	this->makeblogmap();
+	this->makecalmap();
 	this->initE();
 	this->initRS(n, bitvec);
 }
@@ -166,8 +178,9 @@ rrr::~rrr()
 	sample=0;
 	delete sumR;
 	delete posS;
-	delete cmap;
-	delete blogmap;
+	delete[] blogmap;
+	delete[] calmap;
+	delete[] cmap;
 }
 
 bool rrr::write(ofstream& fout)
@@ -175,10 +188,47 @@ bool rrr::write(ofstream& fout)
 	fout.write((char*)&size, sizeof(int));
 	fout.write((char*)&sample, sizeof(int));
 	fout.write((char*)E, sizeof(u16)*(1U<<u));
-	R.write(fout);
-	S.write(fout);
-	sumR->write(fout);
-	posS->write(fout);
+	if(fout.bad()||fout.fail())
+		return false;
+	if(R.write(fout) && S.write(fout))
+	{
+		if(sumR->write(fout) && posS->write(fout))
+			return true;
+		else
+			return false;
+	}
+	else
+		return false;
+}
+
+
+
+int rrr::get(int index)
+{
+	int width=4;
+	u32 i=index/u;
+	u32 j=i/sample;
+	u32 sum=sumR->get(j);
+	u32 pos=posS->get(j);
+	for(u32 beg=j*sample;beg<i;beg++)
+	{
+		int c = R.getbits(width*beg,width);
+		sum += c;
+		pos += blogmap[c];
+	}
+	int c = R.getbits(width*i,width);
+	int o = S.getbits(pos,blogmap[c]);
+
+	//u64 res;
+	if(c==0)
+		return 0;
+	else if(c==15)
+		return 1;
+	else
+	{
+		u64 temp=E[calmap[c]+o];
+		return temp&(1UL<<(index%u))?1:0;
+	}
 
 }
 
@@ -205,12 +255,14 @@ u32 rrr::rank(int index)
 		return sum+index%u+1;
 	else
 	{
+		/*
 		int t=0;
 		for(int i=0;i<c;i++)
 		{
 			t+=cal(u,i);
 		}
-		u64 temp=E[t+o];
+		*/
+		u64 temp=E[calmap[c]+o];
 		return sum+popcount(temp << (D-index%u-1));
 	}
 }
